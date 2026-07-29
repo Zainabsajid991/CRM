@@ -1,0 +1,621 @@
+{
+  "name": "CRM",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "CRM",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0ca431f2-e761-47d8-af6c-9f87cf9663a5",
+      "name": "Webhook",
+      "webhookId": "83934535-1394-4981-b063-65a61e9d97d7"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nif (!body.email) {\n  throw new Error(\"Email is required\");\n}\n\nreturn [\n  {\n    json: {\n      first_name: body.first_name,\n      last_name: body.last_name,\n      email: body.email,\n      phone: body.phone,\n      title: body.title,\n      department: body.department,\n      office: body.office\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "bf570e7d-1d5d-416a-ae79-bf2c269160a8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "url": "https://crm-sync2.free.beeceptor.com/contacts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "={{$json.email}}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        368,
+        112
+      ],
+      "id": "275c18e2-967a-43f6-a975-c3c07368aa67",
+      "name": "Search Contact",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "kNLFFTmn2yaNinPB",
+          "name": "MockDataSync"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e0d8e2d3-ce97-467b-9ab5-c98e93947ded",
+              "leftValue": "={{ $json.data.length > 0 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "15220d51-a84c-4d65-a1d2-4509dbae192e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "106d82ea-eb2d-42ae-9873-ce175824a44e",
+              "name": "id",
+              "value": "={{ $json.data[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "7e8012f4-427e-4a1a-aad3-3d7dacac7585",
+              "name": "first_name",
+              "value": "={{$('Code in JavaScript').item.json.first_name}}",
+              "type": "string"
+            },
+            {
+              "id": "cd7a8238-e7aa-422f-b3dd-8b7433ebac5b",
+              "name": "last_name",
+              "value": "={{$('Code in JavaScript').item.json.last_name}}",
+              "type": "string"
+            },
+            {
+              "id": "9b807f10-6e47-4f0c-8388-48c6815716fc",
+              "name": "email",
+              "value": "={{$('Code in JavaScript').item.json.email}}",
+              "type": "string"
+            },
+            {
+              "id": "5a38d334-482f-4f26-a648-0b29fa45d6da",
+              "name": "phone",
+              "value": "={{$('Code in JavaScript').item.json.phone}}",
+              "type": "string"
+            },
+            {
+              "id": "e0c10713-bf5e-4ca9-a927-e721af0027c0",
+              "name": "title",
+              "value": "={{$('Code in JavaScript').item.json.title}}",
+              "type": "string"
+            },
+            {
+              "id": "70d5592c-58cf-47db-8702-9099e345c412",
+              "name": "department",
+              "value": "={{$('Code in JavaScript').item.json.department}}",
+              "type": "string"
+            },
+            {
+              "id": "b5a9d502-49ba-4499-be47-c15ca66ecb6a",
+              "name": "office",
+              "value": "={{$('Code in JavaScript').item.json.office}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        832,
+        -80
+      ],
+      "id": "3c62adb3-61c3-4471-a403-83e636a21d85",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ca0e73be-6dcf-4b7b-8fe2-a64daa7f2674",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "f0d55c48-3dfc-417c-8ffa-4159ee1bd43f",
+              "name": "action",
+              "value": "updated",
+              "type": "string"
+            },
+            {
+              "id": "447bae5b-e09e-4c82-a056-5bab3f47fa02",
+              "name": "contactId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1296,
+        -160
+      ],
+      "id": "12fdcfec-24f2-4d2a-9025-a4971938f20a",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": "={{ 200 }}",
+          "responseKey": "={{$json}}"
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1456,
+        -48
+      ],
+      "id": "2f6d55cd-3501-4bf0-8709-f7d59979c815",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1a22b48-8c16-4742-9653-50e9846b755f",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "35bab526-ebca-44ad-90ea-52340a35f51f",
+              "name": "action",
+              "value": "created",
+              "type": "string"
+            },
+            {
+              "id": "31210063-9a34-4b3a-9831-6235a1535df6",
+              "name": "contactId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1488,
+        320
+      ],
+      "id": "6efee4a2-2267-4ac6-9743-8f8be4ea675a",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": "={{ 201 }}",
+          "responseKey": "={{$json}}"
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1808,
+        256
+      ],
+      "id": "cc5bea25-254c-4ba9-bc53-cc53b346cdd2",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "347f82d8-6a10-48f5-8f90-af732f8a38db",
+              "leftValue": "={{ $json.error !== undefined }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        592,
+        432
+      ],
+      "id": "e0b2ceff-8e9a-4f11-89ac-f8c409c0b81c",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bf8fb960-b1a6-4d67-87c1-a00d292b3e47",
+              "name": "status",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "02cf1b52-3a28-4d86-a77e-2d4018f683f0",
+              "name": "message",
+              "value": "={{$json.error.message}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        816,
+        368
+      ],
+      "id": "6a6f1f3f-6e14-4c21-bc0f-c8b2865bbfb8",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": "={{ $json.statusCode ?? 500 }}",
+          "responseKey": "={{ $json }}"
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1024,
+        368
+      ],
+      "id": "0056b073-1858-452e-8e9f-851f2173f869",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://crm-sync2.free.beeceptor.com/contacts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "={{$json.email}}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "={\n  \"first_name\": \"{{$json.first_name}}\",\n  \"last_name\": \"{{$json.last_name}}\",\n  \"email\": \"{{$json.email}}\",\n  \"phone\": \"{{$json.phone}}\",\n  \"title\": \"{{$json.title}}\",\n  \"department\": \"{{$json.department}}\",\n  \"office\": \"{{$json.office}}\"\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1184,
+        144
+      ],
+      "id": "c5cb0ca9-7012-4627-a4f7-522630f55c38",
+      "name": "http1",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "kNLFFTmn2yaNinPB",
+          "name": "MockDataSync"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://crm-sync2.free.beeceptor.com/contacts/{{$json.id}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "={{$json.email}}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "={\n  \"first_name\": \"{{$json.first_name}}\",\n  \"last_name\": \"{{$json.last_name}}\",\n  \"email\": \"{{$json.email}}\",\n  \"phone\": \"{{$json.phone}}\",\n  \"title\": \"{{$json.title}}\",\n  \"department\": \"{{$json.department}}\",\n  \"office\": \"{{$json.office}}\"\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1040,
+        -64
+      ],
+      "id": "10cfe9af-4403-40c3-aa8e-3a864a3b512f",
+      "name": "http2",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "kNLFFTmn2yaNinPB",
+          "name": "MockDataSync"
+        }
+      },
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Search Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Contact": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "http1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "http2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "http1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "http2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "8b966190-c486-4107-afab-b80ecd239516",
+  "meta": {
+    "instanceId": "ffe3646068ac68e067da542486b60cc283b4d1b9b36897ba201c221831b543ad"
+  },
+  "nodeGroups": [],
+  "id": "oGXgbEmMcPnGGLgj",
+  "tags": []
+}
