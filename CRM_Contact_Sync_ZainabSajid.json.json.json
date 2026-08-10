@@ -1,0 +1,529 @@
+{
+  "name": "CRM Contact Sync - Corrected",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "CRM",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1680,
+        320
+      ],
+      "id": "cb826a50-9166-494e-a7b6-18e34e9329c1",
+      "name": "Webhook",
+      "webhookId": "crm-contact-sync-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\n\nconst required = [\n  'first_name',\n  'last_name',\n  'email',\n  'phone',\n  'title',\n  'department',\n  'office'\n];\n\nconst missing = required.filter(\n  field => body[field] === undefined || body[field] === null || String(body[field]).trim() === ''\n);\n\nif (missing.length > 0) {\n  return [{\n    json: {\n      valid: false,\n      validationError: `Missing required fields: ${missing.join(', ')}`\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    valid: true,\n    first_name: String(body.first_name).trim(),\n    last_name: String(body.last_name).trim(),\n    email: String(body.email).trim(),\n    phone: String(body.phone).trim(),\n    title: String(body.title).trim(),\n    department: String(body.department).trim(),\n    office: String(body.office).trim()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1456,
+        320
+      ],
+      "id": "88bc6c02-4b74-462f-98f3-382f51a75a6e",
+      "name": "Prepare Contact"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1232,
+        320
+      ],
+      "id": "051609e5-b372-449e-b6a2-c76d4ad32def",
+      "name": "Contact Valid?"
+    },
+    {
+      "parameters": {
+        "url": "https://mockcrm.cloudsync.io/api/v2/contacts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "={{ $('Prepare Contact').first().json.email }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -976,
+        192
+      ],
+      "id": "d7774249-352b-4c4b-839e-150b289e3697",
+      "name": "Search Contact",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "ojm63kG8uyvi9ufX",
+          "name": "Mock CRM OAuth2"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ Array.isArray($json.data) && $json.data.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -736,
+        192
+      ],
+      "id": "c346c8d7-a75b-4dee-bcce-6188eef8d0eb",
+      "name": "Contact Exists?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const existing = $json.data[0];\nconst incoming = $('Prepare Contact').first().json;\n\nreturn [{\n  json: {\n    id: existing.id,\n    first_name: incoming.first_name ?? existing.first_name,\n    last_name: incoming.last_name ?? existing.last_name,\n    email: incoming.email ?? existing.email,\n    phone: incoming.phone ?? existing.phone,\n    title: incoming.title ?? existing.title,\n    department: incoming.department ?? existing.department,\n    office: incoming.office ?? existing.office\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        64
+      ],
+      "id": "d1c5a662-ba93-49f5-ab62-2bc70ed141a4",
+      "name": "Prepare Full Update Object"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ 'https://mockcrm.cloudsync.io/api/v2/contacts/' + $json.id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  first_name: $json.first_name,\n  last_name: $json.last_name,\n  email: $json.email,\n  phone: $json.phone,\n  title: $json.title,\n  department: $json.department,\n  office: $json.office\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -256,
+        64
+      ],
+      "id": "1c1155a1-8714-4b1e-9f23-6cecf4e34ced",
+      "name": "Update Contact",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "ojm63kG8uyvi9ufX",
+          "name": "Unnamed credential"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://mockcrm.cloudsync.io/api/v2/contacts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  first_name: $('Prepare Contact').first().json.first_name,\n  last_name: $('Prepare Contact').first().json.last_name,\n  email: $('Prepare Contact').first().json.email,\n  phone: $('Prepare Contact').first().json.phone,\n  title: $('Prepare Contact').first().json.title,\n  department: $('Prepare Contact').first().json.department,\n  office: $('Prepare Contact').first().json.office\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -496,
+        384
+      ],
+      "id": "74dac80b-cfd9-4dcf-a5bf-7e2572bb3a1c",
+      "name": "Create Contact",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "ojm63kG8uyvi9ufX",
+          "name": "Unnamed credential"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    status: 'success',\n    action: 'updated',\n    contactId: $json.id ?? $('Prepare Full Update Object').first().json.id\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b5b8e55c-365e-4586-93ad-51e2efaae3ff",
+      "name": "Prepare Updated Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        240,
+        0
+      ],
+      "id": "f854077c-5694-4483-b490-0522a3cdddb2",
+      "name": "Respond Updated 200"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    status: 'success',\n    action: 'created',\n    contactId: $json.id ?? null\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        384
+      ],
+      "id": "ebc71b99-b104-44bb-ac59-946588a1fcaf",
+      "name": "Prepare Created Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 201
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        384
+      ],
+      "id": "f8ac00ed-8558-4ca6-a30f-37c3c67f37a9",
+      "name": "Respond Created 201"
+    },
+    {
+      "parameters": {
+        "jsCode": "const err = $json.error ?? $json;\n\nconst statusCode = Number(\n  err.statusCode ??\n  err.status ??\n  err.httpCode ??\n  500\n);\n\nconst message =\n  err.message ??\n  err.description ??\n  err.detail ??\n  err.error?.message ??\n  'CRM API request failed';\n\nreturn [{\n  json: {\n    status: 'error',\n    message,\n    httpStatus: statusCode >= 400 && statusCode <= 599\n      ? statusCode\n      : 500\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        672
+      ],
+      "id": "ba04ce0c-f52e-409a-a34e-61cf90e6670f",
+      "name": "Prepare API Error"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  status: $json.status,\n  message: $json.message\n} }}",
+        "options": {
+          "responseCode": "={{ $json.httpStatus }}"
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        672
+      ],
+      "id": "ea4e1b07-dc9b-4e53-baad-b5ced8180bdd",
+      "name": "Respond API Error"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    status: 'error',\n    message: $json.validationError ?? 'Invalid contact data',\n    httpStatus: 400\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        544
+      ],
+      "id": "fc429ea7-1331-41d7-a7aa-a1d93f2f59d9",
+      "name": "Prepare Validation Error"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  status: $json.status,\n  message: $json.message\n} }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -736,
+        544
+      ],
+      "id": "7d45461e-d0bd-4b25-8ff3-16c06d8526ab",
+      "name": "Respond Validation Error 400"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Contact": {
+      "main": [
+        [
+          {
+            "node": "Contact Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact Valid?": {
+      "main": [
+        [
+          {
+            "node": "Search Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Contact": {
+      "main": [
+        [
+          {
+            "node": "Contact Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare API Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact Exists?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Full Update Object",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Full Update Object": {
+      "main": [
+        [
+          {
+            "node": "Update Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Contact": {
+      "main": [
+        [
+          {
+            "node": "Prepare Updated Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare API Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Contact": {
+      "main": [
+        [
+          {
+            "node": "Prepare Created Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare API Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Updated Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Updated 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Created Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Created 201",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare API Error": {
+      "main": [
+        [
+          {
+            "node": "Respond API Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Validation Error": {
+      "main": [
+        [
+          {
+            "node": "Respond Validation Error 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6a78e53e-f26a-4b14-a336-95ae9d44a38c",
+  "meta": {
+    "instanceId": "494218b0a16c365f0f5af73bd4782ebdf38cd577ce0b554f5a9e410dbc88ebf3"
+  },
+  "nodeGroups": [],
+  "id": "l7zfBpXBbH1SJT6V",
+  "tags": []
+}
